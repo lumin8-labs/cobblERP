@@ -1,0 +1,30 @@
+{
+  "name": "cobblerp",
+  "private": true,
+  "packageManager": "pnpm@10.28.0",
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "lint": "turbo lint",
+    "check-types": "turbo check-types",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
+    "db:generate": "turbo db:generate",
+    "db:push": "turbo db:push",
+    "db:studio": "turbo db:studio"
+  },
+  "devDependencies": {
+    "prettier": "^3.5.1",
+    "turbo": "^2.4.4",
+    "typescript": "^5.7.3"
+  },
+  "pnpm": {
+    "overrides": {
+      "@react-native-community/cli": "^15.0.0",
+      "@react-native-community/cli-server-api": "^15.0.0",
+      "@react-native/dev-middleware": "0.76.6"
+    }
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
