@@ -1,0 +1,102 @@
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# Testing & Coverage
+coverage/
+*.lcov
+.nyc_output/
+
+# Next.js
+.next/
+out/
+
+# NestJS / TypeScript builds
+dist/
+*.tsbuildinfo
+
+# Turborepo
+.turbo/
+
+# React Native & Metro
+.metro-health-check*
+*.jsbundle
+*.bundle
+
+# iOS (Bare React Native / CocoaPods / Xcode)
+Pods/
+**/Pods/
+build/
+**/build/
+DerivedData/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcuserstate
+*.hmap
+*.ipa
+.xcode.env.local
+Podfile.checksum
+
+# Android (Bare React Native / Gradle)
+.gradle/
+**/.gradle/
+**/app/build/
+*.apk
+*.aab
+local.properties
+.cxx/
+**/android/.idea/
+**/android/*.iml
+
+# Expo (OTA updates / tooling)
+.expo/
+.expo-shared/
+web-build/
+
+# Signing keys & security credentials
+*.jks
+*.p8
+*.p12
+*.key
+*.pem
+*.mobileprovision
+*.keystore
+!debug.keystore
+*.orig.*
+
+# Environment files
+.env
+.env*.local
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Operating System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs & caches
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.eslintcache
+
+# IDEs & Editors
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.sublime-project
+*.sublime-workspace
