@@ -1,46 +1,303 @@
-// IBM Carbon Design System baseline styles
+// IBM Carbon Design System tokens & component styles
+@use '@carbon/react/scss/spacing' as *;
+@use '@carbon/react/scss/theme' as *;
+@use '@carbon/react/scss/type' as *;
+@use '@carbon/react/scss/breakpoint' as *;
 @use '@carbon/react';
 
-:root {
-  --cds-interactive-01: #0f62fe;
+html {
+  scroll-padding-top: 4rem;
 }
 
 body {
   margin: 0;
   padding: 0;
-  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: var(--cds-background);
-  color: var(--cds-text-primary);
+  background-color: $background;
+  color: $text-primary;
+  @include type-style('body-01');
+}
+
+.cobbl-app-shell {
+  min-height: 100vh;
+  background-color: $background;
+  color: $text-primary;
 }
 
 .cobbl-header {
-  border-bottom: 1px solid var(--cds-border-subtle);
+  border-bottom: 1px solid $border-subtle-01;
+}
+
+.cobbl-content {
+  min-height: calc(100vh - 3rem);
+  background-color: $background;
+  padding-block: $spacing-07;
+}
+
+.cobbl-grid-group {
+  row-gap: $spacing-07;
+  margin-block-end: $spacing-07;
+}
+
+.cobbl-grid-narrow {
+  row-gap: $spacing-05;
+  margin-block-end: $spacing-07;
 }
 
 .cobbl-hero-tile {
-  background: var(--cds-layer-01);
-  border: 1px solid var(--cds-border-subtle);
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
+  background-color: $layer-01;
+  border: 1px solid $border-subtle-01;
+  padding: $spacing-06;
 }
 
-.cobbl-stat-number {
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--cds-text-primary);
-  margin-top: 0.5rem;
+.cobbl-hero-title {
+  @include type-style('heading-04');
+  color: $text-primary;
+  margin-block: $spacing-04 $spacing-03;
+}
+
+.cobbl-hero-subtitle {
+  @include type-style('body-compact-01');
+  color: $text-secondary;
+  margin: 0;
+}
+
+.cobbl-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $spacing-04;
+}
+
+.cobbl-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: $spacing-03;
+  height: 100%;
+
+  @include breakpoint('lg') {
+    justify-content: flex-end;
+  }
+}
+
+.cobbl-metric-tile {
+  height: 100%;
+  border: 1px solid $border-subtle-01;
 }
 
 .cobbl-stat-label {
-  font-size: 0.875rem;
-  color: var(--cds-text-secondary);
+  @include type-style('label-01');
+  color: $text-secondary;
 }
 
-.cobbl-stage-indicator {
-  display: inline-block;
-  padding: 0.25rem 0.5rem;
-  font-size: 0.75rem;
+.cobbl-stat-number {
+  @include type-style('heading-05');
+  color: $text-primary;
+  margin-block-start: $spacing-03;
+}
+
+.cobbl-stat-caption-success {
+  @include type-style('helper-text-01');
+  color: $support-success;
+  margin-block-start: $spacing-03;
+}
+
+.cobbl-stat-caption-info {
+  @include type-style('helper-text-01');
+  color: $support-info;
+  margin-block-start: $spacing-03;
+}
+
+.cobbl-stat-caption-muted {
+  @include type-style('helper-text-01');
+  color: $text-secondary;
+  margin-block-start: $spacing-03;
+}
+
+.cobbl-section-heading {
+  @include type-style('heading-03');
+  color: $text-primary;
+  margin-block: 0 $spacing-05;
+}
+
+.cobbl-subsection-heading {
+  @include type-style('heading-02');
+  color: $text-primary;
+  margin-block: 0 $spacing-03;
+}
+
+.cobbl-body-muted {
+  @include type-style('body-compact-01');
+  color: $text-secondary;
+  margin: 0;
+}
+
+.cobbl-stage-card {
+  border-left: 3px solid $border-interactive;
+  padding-inline-start: $spacing-04;
+}
+
+.cobbl-stage-card--teal {
+  border-left-color: $support-info;
+}
+
+.cobbl-stage-card--purple {
+  border-left-color: $interactive;
+}
+
+.cobbl-stage-card--success {
+  border-left-color: $support-success;
+}
+
+.cobbl-stage-eyebrow {
+  @include type-style('label-01');
+  color: $text-helper;
+}
+
+.cobbl-stage-title {
+  @include type-style('heading-01');
+  color: $text-primary;
+  margin-block: $spacing-01;
+}
+
+.cobbl-stage-progress {
+  margin-block-start: $spacing-04;
+}
+
+.cobbl-table-shell {
+  background-color: $layer-01;
+  border: 1px solid $border-subtle-01;
+}
+
+.cobbl-table-header-bar {
+  padding: $spacing-05;
+  border-bottom: 1px solid $border-subtle-01;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: $spacing-04;
+}
+
+.cobbl-mono-code {
+  @include type-style('code-01');
+  color: $link-primary;
   font-weight: 600;
-  border-radius: 0;
+}
+
+.cobbl-bullet-list {
+  margin: 0;
+  padding-inline-start: $spacing-05;
+  color: $text-secondary;
+  @include type-style('body-compact-01');
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-02;
+}
+
+// Auth & Settings Layout
+.cobbl-auth-tile {
+  border: 1px solid $border-subtle-01;
+  padding: $spacing-06;
+}
+
+.cobbl-auth-header {
+  margin-block-end: $spacing-06;
+}
+
+.cobbl-auth-eyebrow {
+  @include type-style('label-01');
+  color: $text-helper;
   text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.cobbl-auth-title {
+  @include type-style('heading-04');
+  color: $text-primary;
+  margin-block: $spacing-02 $spacing-03;
+}
+
+.cobbl-auth-subtitle {
+  @include type-style('body-compact-01');
+  color: $text-secondary;
+  margin: 0;
+}
+
+.cobbl-auth-footer {
+  margin-block-start: $spacing-06;
+  padding-block-start: $spacing-05;
+  border-top: 1px solid $border-subtle-01;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: $spacing-03;
+}
+
+.cobbl-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $spacing-04;
+  margin-block-start: $spacing-02;
+}
+
+.cobbl-inline-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-04;
+}
+
+.cobbl-inline-cluster {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $spacing-03;
+}
+
+.cobbl-settings-panel {
+  padding-block: $spacing-06;
+}
+
+.cobbl-settings-card {
+  border: 1px solid $border-subtle-01;
+  padding: $spacing-06;
+  margin-block-end: $spacing-06;
+}
+
+.cobbl-otp-input input {
+  @include type-style('code-02');
+  letter-spacing: 0.25em;
+}
+
+.cobbl-notification-wrap {
+  margin-block-end: $spacing-05;
+}
+
+.cobbl-user-chip {
+  @include type-style('label-01');
+  color: $text-secondary;
+  padding-inline: $spacing-04;
+  display: none;
+  align-items: center;
+
+  @include breakpoint('md') {
+    display: flex;
+  }
+}
+
+.cobbl-divider {
+  border: 0;
+  border-top: 1px solid $border-subtle-01;
+  margin-block: $spacing-06;
+}
+
+.cobbl-session-list-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: $spacing-03;
 }

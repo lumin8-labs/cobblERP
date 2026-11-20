@@ -1,11 +1,20 @@
-import { neon } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-http';
-import * as schema from './schema/index';
+import { neon } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-http";
+import * as schema from "./schema/index";
+import dotenv from "dotenv";
+import path from "path";
+
+// Automatically load .env from root or parent directories if not already defined
+if (!process.env.DATABASE_URL) {
+  dotenv.config({ path: path.resolve(process.cwd(), "../../.env") });
+  dotenv.config({ path: path.resolve(process.cwd(), "../.env") });
+  dotenv.config({ path: path.resolve(process.cwd(), ".env") });
+}
 
 export function createDb(connectionString?: string) {
   const url = connectionString || process.env.DATABASE_URL;
   if (!url) {
-    throw new Error('DATABASE_URL environment variable is not defined.');
+    throw new Error("DATABASE_URL environment variable is not defined.");
   }
   const sql = neon(url);
   return drizzle(sql, { schema });

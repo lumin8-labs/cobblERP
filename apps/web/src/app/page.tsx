@@ -1,39 +1,36 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import {
-  Header,
-  HeaderName,
-  HeaderNavigation,
-  HeaderMenuItem,
-  HeaderGlobalBar,
-  HeaderGlobalAction,
-  Grid,
-  Column,
-  Tile,
   Button,
-  Tag,
+  Column,
   DataTable,
+  Grid,
+  InlineNotification,
+  ProgressBar,
   Table,
-  TableHead,
-  TableRow,
-  TableHeader,
   TableBody,
   TableCell,
-  Content,
-  ProgressBar,
-  Theme,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Tag,
+  Tile,
+  preview__IconIndicator as IconIndicator,
 } from '@carbon/react';
 import {
-  Dashboard,
-  Box,
-  Catalog,
-  Settings,
-  CheckmarkFilled,
-  User,
-  Sun,
   Asleep,
+  Box,
+  CheckmarkFilled,
+  Login,
+  Settings,
+  Sun,
+  UserAvatar,
 } from '@carbon/icons-react';
+import { AppShell } from '@/components/AppShell';
+import { useAppTheme } from '@/components/ThemeProvider';
+import { useSession } from '@/lib/auth-client';
 
 interface OrderRow {
   id: string;
@@ -109,18 +106,23 @@ const TABLE_HEADERS = [
   { key: 'material', header: 'Upper Material' },
 ];
 
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
 export default function Home() {
   const [rows] = useState<OrderRow[]>(INITIAL_ROWS);
-  const [activeTab, setActiveTab] = useState('orders');
-  const [theme, setTheme] = useState<'g100' | 'white'>('g100');
-  const [apiHealth, setApiHealth] = useState<'checking' | 'online' | 'offline'>('checking');
+  const { theme, toggleTheme } = useAppTheme();
+  const { data: session } = useSession();
+  const [apiHealth, setApiHealth] = useState<'checking' | 'online' | 'offline'>(
+    'checking'
+  );
   const [apiLatency, setApiLatency] = useState<number | null>(null);
 
   useEffect(() => {
     const checkApi = async () => {
       const start = Date.now();
       try {
-        const res = await fetch('http://localhost:4000/health');
+        const res = await fetch(`${API_BASE_URL}/health`);
         if (res.ok) {
           setApiHealth('online');
           setApiLatency(Date.now() - start);
@@ -131,325 +133,344 @@ export default function Home() {
         setApiHealth('offline');
       }
     };
-    checkApi();
+    void checkApi();
   }, []);
 
-  const toggleTheme = () => {
-    setTheme((prev) => {
-      const nextTheme = prev === 'g100' ? 'white' : 'g100';
-      if (typeof document !== 'undefined') {
-        document.documentElement.setAttribute('data-carbon-theme', nextTheme);
-      }
-      return nextTheme;
-    });
-  };
-
-  const getStatusTag = (status: string) => {
+  const renderStatusIndicator = (status: string) => {
     switch (status) {
       case 'In Progress':
-        return <Tag type="blue">{status}</Tag>;
+        return <IconIndicator kind="in-progress" label={status} />;
       case 'Quality Check':
-        return <Tag type="warm-gray">{status}</Tag>;
+        return <IconIndicator kind="caution-minor" label={status} />;
       case 'Pending':
-        return <Tag type="cool-gray">{status}</Tag>;
+        return <IconIndicator kind="pending" label={status} />;
       case 'Completed':
-        return <Tag type="green">{status}</Tag>;
+        return <IconIndicator kind="succeeded" label={status} />;
       default:
-        return <Tag type="gray">{status}</Tag>;
+        return <IconIndicator kind="unknown" label={status} />;
     }
   };
 
   return (
-    <Theme theme={theme}>
-      <div style={{ minHeight: '100vh', backgroundColor: 'var(--cds-background)' }}>
-        {/* Carbon UI Shell Header */}
-        <Header aria-label="CobblERP Header" className="cobbl-header">
-          <HeaderName href="#" prefix="CobblERP">
-            [Footwear Manufacturing]
-          </HeaderName>
-          <HeaderNavigation aria-label="Navigation">
-            <HeaderMenuItem
-              href="#orders"
-              isCurrentPage={activeTab === 'orders'}
-              onClick={() => setActiveTab('orders')}
-            >
-              Production Floor
-            </HeaderMenuItem>
-            <HeaderMenuItem
-              href="#inventory"
-              isCurrentPage={activeTab === 'inventory'}
-              onClick={() => setActiveTab('inventory')}
-            >
-              Raw Materials & Leather
-            </HeaderMenuItem>
-            <HeaderMenuItem
-              href="#styles"
-              isCurrentPage={activeTab === 'styles'}
-              onClick={() => setActiveTab('styles')}
-            >
-              Styles & BOM
-            </HeaderMenuItem>
-          </HeaderNavigation>
-          <HeaderGlobalBar>
-            {/* Theme Toggle Action */}
-            <HeaderGlobalAction
-              aria-label={`Switch to ${theme === 'g100' ? 'Light' : 'Dark'} Mode`}
-              tooltipAlignment="end"
-              onClick={toggleTheme}
-            >
-              {theme === 'g100' ? <Sun size={20} /> : <Asleep size={20} />}
-            </HeaderGlobalAction>
+    <AppShell>
+      {/* Email verification prompt for signed-in but unverified operators */}
+      {session?.user && !session.user.emailVerified ? (
+        <Grid className="cobbl-grid-group">
+          <Column sm={4} md={8} lg={16}>
+            <InlineNotification
+              kind="warning"
+              role="status"
+              title="Email verification pending"
+              subtitle={`Verify ${session.user.email} with a 6-digit OTP to unlock full team access.`}
+              hideCloseButton
+            />
+          </Column>
+        </Grid>
+      ) : null}
 
-            <HeaderGlobalAction aria-label="Dashboard" tooltipAlignment="end">
-              <Dashboard size={20} />
-            </HeaderGlobalAction>
-            <HeaderGlobalAction aria-label="Catalog" tooltipAlignment="end">
-              <Catalog size={20} />
-            </HeaderGlobalAction>
-            <HeaderGlobalAction aria-label="Settings" tooltipAlignment="end">
-              <Settings size={20} />
-            </HeaderGlobalAction>
-            <HeaderGlobalAction aria-label="Profile" tooltipAlignment="end">
-              <User size={20} />
-            </HeaderGlobalAction>
-          </HeaderGlobalBar>
-        </Header>
+      {/* Executive Summary Bar */}
+      <Grid className="cobbl-grid-group">
+        <Column sm={4} md={8} lg={16}>
+          <div className="cobbl-hero-tile">
+            <Grid>
+              <Column sm={4} md={5} lg={10}>
+                <div className="cobbl-hero-meta">
+                  <Tag type="cyan">
+                    Carbon Theme: {theme === 'g100' ? 'Gray 100 (Dark)' : 'White (Light)'}
+                  </Tag>
+                  <IconIndicator
+                    kind={
+                      apiHealth === 'online'
+                        ? 'succeeded'
+                        : apiHealth === 'checking'
+                          ? 'in-progress'
+                          : 'failed'
+                    }
+                    label={
+                      apiHealth === 'online'
+                        ? `NestJS API Online (${apiLatency}ms)`
+                        : apiHealth === 'checking'
+                          ? 'Checking NestJS API'
+                          : 'NestJS API Offline'
+                    }
+                  />
+                  <Tag type="purple">Standard React Native Mobile</Tag>
+                </div>
 
-        {/* Main Content using Carbon Grid */}
-        <Content style={{ paddingTop: '5rem', minHeight: '100vh', backgroundColor: 'var(--cds-background)' }}>
-          <Grid>
-            {/* Executive Summary Bar */}
-            <Column lg={16} md={8} sm={4}>
-              <div className="cobbl-hero-tile">
-                <Grid>
-                  <Column lg={10} md={5} sm={4}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <Tag type="cyan">
-                        Carbon Theme: {theme === 'g100' ? 'Gray 100 (Dark)' : 'White (Light)'}
-                      </Tag>
-                      <Tag type={apiHealth === 'online' ? 'green' : 'red'}>
-                        NestJS API: {apiHealth === 'online' ? `Online (${apiLatency}ms)` : 'Offline'}
-                      </Tag>
-                      <Tag type="purple">Standard React Native Mobile</Tag>
-                    </div>
-                    <h1 style={{ fontSize: '1.75rem', fontWeight: 700, margin: '0.75rem 0 0.25rem', color: 'var(--cds-text-primary)' }}>
-                      CobblERP Manufacturing Execution System
-                    </h1>
-                    <p style={{ color: 'var(--cds-text-secondary)', fontSize: '0.875rem', lineHeight: '1.25rem' }}>
-                      End-to-end footwear production management: from clicking & cutting leather hides,
-                      closing uppers, lasting, sole attaching, through to final quality inspection.
-                    </p>
-                  </Column>
+                <h1 className="cobbl-hero-title">
+                  CobblERP Manufacturing Execution System
+                </h1>
+                <p className="cobbl-hero-subtitle">
+                  End-to-end footwear production management: from clicking &amp;
+                  cutting leather hides, closing uppers, lasting, sole
+                  attaching, through to final quality inspection.
+                </p>
+              </Column>
 
-                  <Column lg={6} md={3} sm={4}>
-                    <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', flexWrap: 'wrap', alignItems: 'center', height: '100%' }}>
+              <Column sm={4} md={3} lg={6}>
+                <div className="cobbl-hero-actions">
+                  <Button
+                    type="button"
+                    kind="tertiary"
+                    size="md"
+                    onClick={toggleTheme}
+                    renderIcon={theme === 'g100' ? Sun : Asleep}
+                  >
+                    {theme === 'g100' ? 'Light Mode' : 'Dark Mode'}
+                  </Button>
+
+                  {session?.user ? (
+                    <Button
+                      as={Link}
+                      href="/settings"
+                      kind="primary"
+                      size="md"
+                      renderIcon={Settings}
+                    >
+                      Profile &amp; Settings
+                    </Button>
+                  ) : (
+                    <>
                       <Button
-                        kind="tertiary"
+                        as={Link}
+                        href="/sign-up"
+                        kind="secondary"
                         size="md"
-                        onClick={toggleTheme}
-                        renderIcon={theme === 'g100' ? Sun : Asleep}
+                        renderIcon={UserAvatar}
                       >
-                        {theme === 'g100' ? 'Light Mode' : 'Dark Mode'}
+                        Create Account
                       </Button>
-                      <Button kind="secondary" size="md" href="http://localhost:4000/users" target="_blank">
-                        Inspect API
+                      <Button
+                        as={Link}
+                        href="/sign-in"
+                        kind="primary"
+                        size="md"
+                        renderIcon={Login}
+                      >
+                        Sign In
                       </Button>
-                      <Button kind="primary" size="md" href="/api/users">
-                        Query DB
-                      </Button>
-                    </div>
-                  </Column>
-                </Grid>
-              </div>
-            </Column>
-
-            {/* Key Production Metrics (Carbon Tiles) */}
-            <Column lg={4} md={2} sm={4} style={{ marginBottom: '1rem' }}>
-              <Tile>
-                <div className="cobbl-stat-label">Active Work Orders</div>
-                <div className="cobbl-stat-number">14 Orders</div>
-                <div style={{ marginTop: '0.5rem', color: 'var(--cds-support-success, #42be65)', fontSize: '0.75rem' }}>
-                  +3 orders started today
+                    </>
+                  )}
                 </div>
-              </Tile>
-            </Column>
+              </Column>
+            </Grid>
+          </div>
+        </Column>
+      </Grid>
 
-            <Column lg={4} md={2} sm={4} style={{ marginBottom: '1rem' }}>
-              <Tile>
-                <div className="cobbl-stat-label">Pairs In Production</div>
-                <div className="cobbl-stat-number">1,030 Pairs</div>
-                <div style={{ marginTop: '0.5rem', color: 'var(--cds-interactive-01, #0f62fe)', fontSize: '0.75rem' }}>
-                  78% factory capacity utilized
-                </div>
-              </Tile>
-            </Column>
+      {/* Key Production Metrics */}
+      <Grid narrow className="cobbl-grid-narrow">
+        <Column sm={4} md={4} lg={4}>
+          <Tile className="cobbl-metric-tile">
+            <div className="cobbl-stat-label">Active Work Orders</div>
+            <div className="cobbl-stat-number">14 Orders</div>
+            <div className="cobbl-stat-caption-success">
+              +3 orders started today
+            </div>
+          </Tile>
+        </Column>
 
-            <Column lg={4} md={2} sm={4} style={{ marginBottom: '1rem' }}>
-              <Tile>
-                <div className="cobbl-stat-label">Leather Inventory (Hides)</div>
-                <div className="cobbl-stat-number">4,280 sq.ft</div>
-                <div style={{ marginTop: '0.5rem', color: 'var(--cds-text-secondary)', fontSize: '0.75rem' }}>
-                  Calf, Suede & Cordovan
-                </div>
-              </Tile>
-            </Column>
+        <Column sm={4} md={4} lg={4}>
+          <Tile className="cobbl-metric-tile">
+            <div className="cobbl-stat-label">Pairs In Production</div>
+            <div className="cobbl-stat-number">1,030 Pairs</div>
+            <div className="cobbl-stat-caption-info">
+              78% factory capacity utilized
+            </div>
+          </Tile>
+        </Column>
 
-            <Column lg={4} md={2} sm={4} style={{ marginBottom: '1rem' }}>
-              <Tile>
-                <div className="cobbl-stat-label">First-Pass Yield (QC)</div>
-                <div className="cobbl-stat-number">98.4%</div>
-                <div style={{ marginTop: '0.5rem', color: 'var(--cds-support-success, #42be65)', fontSize: '0.75rem' }}>
-                  Within AQL 1.5 standard
-                </div>
-              </Tile>
-            </Column>
+        <Column sm={4} md={4} lg={4}>
+          <Tile className="cobbl-metric-tile">
+            <div className="cobbl-stat-label">Leather Inventory (Hides)</div>
+            <div className="cobbl-stat-number">4,280 sq.ft</div>
+            <div className="cobbl-stat-caption-muted">
+              Calf, Suede &amp; Cordovan
+            </div>
+          </Tile>
+        </Column>
 
-            {/* Production Floor Pipeline Overview */}
-            <Column lg={16} md={8} sm={4} style={{ marginBottom: '1.5rem' }}>
-              <Tile>
-                <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--cds-text-primary)' }}>
-                  Footwear Assembly Line Stages
-                </h3>
-                <Grid>
-                  <Column lg={4} md={2} sm={2}>
-                    <div style={{ borderLeft: '3px solid var(--cds-interactive-01, #0f62fe)', paddingLeft: '0.75rem' }}>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--cds-text-placeholder)' }}>STAGE 1</div>
-                      <div style={{ fontWeight: 600, color: 'var(--cds-text-primary)' }}>Clicking / Cutting</div>
-                      <div style={{ fontSize: '0.8125rem', color: 'var(--cds-text-secondary)' }}>Hide sorting & die cutting</div>
-                      <div style={{ marginTop: '0.5rem' }}>
-                        <ProgressBar label="Capacity" value={85} size="small" />
-                      </div>
-                    </div>
-                  </Column>
+        <Column sm={4} md={4} lg={4}>
+          <Tile className="cobbl-metric-tile">
+            <div className="cobbl-stat-label">First-Pass Yield (QC)</div>
+            <div className="cobbl-stat-number">98.4%</div>
+            <div className="cobbl-stat-caption-success">
+              Within AQL 1.5 standard
+            </div>
+          </Tile>
+        </Column>
+      </Grid>
 
-                  <Column lg={4} md={2} sm={2}>
-                    <div style={{ borderLeft: '3px solid #009d9a', paddingLeft: '0.75rem' }}>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--cds-text-placeholder)' }}>STAGE 2</div>
-                      <div style={{ fontWeight: 600, color: 'var(--cds-text-primary)' }}>Closing / Stitching</div>
-                      <div style={{ fontSize: '0.8125rem', color: 'var(--cds-text-secondary)' }}>Skiving, lining & upper seam</div>
-                      <div style={{ marginTop: '0.5rem' }}>
-                        <ProgressBar label="Capacity" value={92} size="small" />
-                      </div>
-                    </div>
-                  </Column>
-
-                  <Column lg={4} md={2} sm={2}>
-                    <div style={{ borderLeft: '3px solid #8a3ffc', paddingLeft: '0.75rem' }}>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--cds-text-placeholder)' }}>STAGE 3</div>
-                      <div style={{ fontWeight: 600, color: 'var(--cds-text-primary)' }}>Lasting & Welting</div>
-                      <div style={{ fontSize: '0.8125rem', color: 'var(--cds-text-secondary)' }}>Toe lasting & Goodyear welt</div>
-                      <div style={{ marginTop: '0.5rem' }}>
-                        <ProgressBar label="Capacity" value={74} size="small" />
-                      </div>
-                    </div>
-                  </Column>
-
-                  <Column lg={4} md={2} sm={2}>
-                    <div style={{ borderLeft: '3px solid #42be65', paddingLeft: '0.75rem' }}>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--cds-text-placeholder)' }}>STAGE 4</div>
-                      <div style={{ fontWeight: 600, color: 'var(--cds-text-primary)' }}>Bottoming & QC</div>
-                      <div style={{ fontSize: '0.8125rem', color: 'var(--cds-text-secondary)' }}>Sole attaching & burnishing</div>
-                      <div style={{ marginTop: '0.5rem' }}>
-                        <ProgressBar label="Capacity" value={90} size="small" />
-                      </div>
-                    </div>
-                  </Column>
-                </Grid>
-              </Tile>
-            </Column>
-
-            {/* Active Work Orders DataTable */}
-            <Column lg={16} md={8} sm={4} style={{ marginBottom: '2rem' }}>
-              <DataTable rows={rows} headers={TABLE_HEADERS}>
-                {({ rows: tableRows, headers, getTableProps, getHeaderProps, getRowProps }) => (
-                  <div style={{ backgroundColor: 'var(--cds-layer-01)', border: '1px solid var(--cds-border-subtle)' }}>
-                    <div style={{ padding: '1rem', borderBottom: '1px solid var(--cds-border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div>
-                        <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: 'var(--cds-text-primary)' }}>
-                          Live Factory Work Orders
-                        </h3>
-                        <p style={{ fontSize: '0.8125rem', color: 'var(--cds-text-secondary)' }}>
-                          Track production lots from cutting room to final boxed footwear.
-                        </p>
-                      </div>
-                      <Tag type="outline">Synchronized with Drizzle ORM</Tag>
-                    </div>
-                    <Table {...getTableProps()} aria-label="Footwear Production Table">
-                      <TableHead>
-                        <TableRow>
-                          {headers.map((header) => (
-                            <TableHeader {...getHeaderProps({ header })} key={header.key}>
-                              {header.header}
-                            </TableHeader>
-                          ))}
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {tableRows.map((row) => (
-                          <TableRow {...getRowProps({ row })} key={row.id}>
-                            {row.cells.map((cell) => {
-                              if (cell.info.header === 'status') {
-                                return (
-                                  <TableCell key={cell.id}>
-                                    {getStatusTag(cell.value)}
-                                  </TableCell>
-                                );
-                              }
-                              if (cell.info.header === 'orderNumber') {
-                                return (
-                                  <TableCell key={cell.id}>
-                                    <span style={{ fontFamily: 'monospace', color: 'var(--cds-link-primary, #0f62fe)', fontWeight: 600 }}>
-                                      {cell.value}
-                                    </span>
-                                  </TableCell>
-                                );
-                              }
-                              return (
-                                <TableCell key={cell.id}>{cell.value}</TableCell>
-                              );
-                            })}
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+      {/* Production Floor Pipeline Overview */}
+      <Grid className="cobbl-grid-group">
+        <Column sm={4} md={8} lg={16}>
+          <Tile>
+            <h2 className="cobbl-section-heading">
+              Footwear Assembly Line Stages
+            </h2>
+            <Grid>
+              <Column sm={4} md={4} lg={4}>
+                <div className="cobbl-stage-card">
+                  <div className="cobbl-stage-eyebrow">STAGE 1</div>
+                  <div className="cobbl-stage-title">Clicking / Cutting</div>
+                  <p className="cobbl-body-muted">Hide sorting &amp; die cutting</p>
+                  <div className="cobbl-stage-progress">
+                    <ProgressBar label="Capacity" value={85} size="small" />
                   </div>
-                )}
-              </DataTable>
-            </Column>
+                </div>
+              </Column>
 
-            {/* Architecture & Guidelines for Mobile and Web */}
-            <Column lg={8} md={4} sm={4} style={{ marginBottom: '1.5rem' }}>
-              <Tile>
-                <h4 style={{ fontWeight: 600, marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--cds-text-primary)' }}>
-                  <Box size={18} /> Standard React Native Mobile App
-                </h4>
-                <p style={{ color: 'var(--cds-text-secondary)', fontSize: '0.8125rem', lineHeight: '1.35rem' }}>
-                  • Built with <strong>bare React Native 0.76+</strong> (not managed Expo).
-                  <br />
-                  • Dual-theme support: <strong>Gray 100 (Dark)</strong> &amp; <strong>White (Light)</strong>.
-                  <br />
-                  • Equipped with <code>expo-updates</code> solely for pushing over-the-air bundle updates to mobile barcode scanners and tablets.
-                </p>
-              </Tile>
-            </Column>
+              <Column sm={4} md={4} lg={4}>
+                <div className="cobbl-stage-card cobbl-stage-card--teal">
+                  <div className="cobbl-stage-eyebrow">STAGE 2</div>
+                  <div className="cobbl-stage-title">Closing / Stitching</div>
+                  <p className="cobbl-body-muted">Skiving, lining &amp; upper seam</p>
+                  <div className="cobbl-stage-progress">
+                    <ProgressBar label="Capacity" value={92} size="small" />
+                  </div>
+                </div>
+              </Column>
 
-            <Column lg={8} md={4} sm={4} style={{ marginBottom: '1.5rem' }}>
-              <Tile>
-                <h4 style={{ fontWeight: 600, marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--cds-text-primary)' }}>
-                  <CheckmarkFilled size={18} /> Drizzle ORM + Neon Database
-                </h4>
-                <p style={{ color: 'var(--cds-text-secondary)', fontSize: '0.8125rem', lineHeight: '1.35rem' }}>
-                  • Pre-configured schema for products, work orders, materials, and batch tracking.
-                  <br />
-                  • Instant serverless execution via <code>@neondatabase/serverless</code> HTTP driver.
-                  <br />
-                  • Direct sharing across Next.js and NestJS via <code>@repo/db</code> package.
-                </p>
-              </Tile>
-            </Column>
-          </Grid>
-        </Content>
-      </div>
-    </Theme>
+              <Column sm={4} md={4} lg={4}>
+                <div className="cobbl-stage-card cobbl-stage-card--purple">
+                  <div className="cobbl-stage-eyebrow">STAGE 3</div>
+                  <div className="cobbl-stage-title">Lasting &amp; Welting</div>
+                  <p className="cobbl-body-muted">Toe lasting &amp; Goodyear welt</p>
+                  <div className="cobbl-stage-progress">
+                    <ProgressBar label="Capacity" value={74} size="small" />
+                  </div>
+                </div>
+              </Column>
+
+              <Column sm={4} md={4} lg={4}>
+                <div className="cobbl-stage-card cobbl-stage-card--success">
+                  <div className="cobbl-stage-eyebrow">STAGE 4</div>
+                  <div className="cobbl-stage-title">Bottoming &amp; QC</div>
+                  <p className="cobbl-body-muted">Sole attaching &amp; burnishing</p>
+                  <div className="cobbl-stage-progress">
+                    <ProgressBar label="Capacity" value={90} size="small" />
+                  </div>
+                </div>
+              </Column>
+            </Grid>
+          </Tile>
+        </Column>
+      </Grid>
+
+      {/* Active Work Orders DataTable */}
+      <Grid className="cobbl-grid-group">
+        <Column sm={4} md={8} lg={16}>
+          <DataTable rows={rows} headers={TABLE_HEADERS}>
+            {({ rows: tableRows, headers, getTableProps, getHeaderProps, getRowProps }) => (
+              <div className="cobbl-table-shell">
+                <div className="cobbl-table-header-bar">
+                  <div>
+                    <h2 className="cobbl-subsection-heading">
+                      Live Factory Work Orders
+                    </h2>
+                    <p className="cobbl-body-muted">
+                      Track production lots from cutting room to final boxed
+                      footwear.
+                    </p>
+                  </div>
+                  <Tag type="outline">Synchronized with Drizzle ORM</Tag>
+                </div>
+                <Table {...getTableProps()} aria-label="Footwear Production Table">
+                  <TableHead>
+                    <TableRow>
+                      {headers.map((header) => (
+                        <TableHeader {...getHeaderProps({ header })} key={header.key}>
+                          {header.header}
+                        </TableHeader>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {tableRows.map((row) => (
+                      <TableRow {...getRowProps({ row })} key={row.id}>
+                        {row.cells.map((cell) => {
+                          if (cell.info.header === 'status') {
+                            return (
+                              <TableCell key={cell.id}>
+                                {renderStatusIndicator(String(cell.value))}
+                              </TableCell>
+                            );
+                          }
+                          if (cell.info.header === 'orderNumber') {
+                            return (
+                              <TableCell key={cell.id}>
+                                <span className="cobbl-mono-code">
+                                  {cell.value}
+                                </span>
+                              </TableCell>
+                            );
+                          }
+                          return (
+                            <TableCell key={cell.id}>{cell.value}</TableCell>
+                          );
+                        })}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </DataTable>
+        </Column>
+      </Grid>
+
+      {/* Architecture & Guidelines */}
+      <Grid className="cobbl-grid-group">
+        <Column sm={4} md={4} lg={8}>
+          <Tile className="cobbl-metric-tile">
+            <h2 className="cobbl-subsection-heading">
+              <span className="cobbl-inline-cluster">
+                <Box size={18} aria-hidden="true" />
+                <span>Standard React Native Mobile App</span>
+              </span>
+            </h2>
+            <ul className="cobbl-bullet-list">
+              <li>
+                Built with <strong>bare React Native 0.76+</strong> (not managed
+                Expo).
+              </li>
+              <li>
+                Dual-theme support: <strong>Gray 100 (Dark)</strong> &amp;{' '}
+                <strong>White (Light)</strong>.
+              </li>
+              <li>
+                Equipped with <code>expo-updates</code> solely for over-the-air
+                bundle updates on shop-floor scanners and tablets.
+              </li>
+            </ul>
+          </Tile>
+        </Column>
+
+        <Column sm={4} md={4} lg={8}>
+          <Tile className="cobbl-metric-tile">
+            <h2 className="cobbl-subsection-heading">
+              <span className="cobbl-inline-cluster">
+                <CheckmarkFilled size={18} aria-hidden="true" />
+                <span>Drizzle ORM + Better Auth + Neon DB</span>
+              </span>
+            </h2>
+            <ul className="cobbl-bullet-list">
+              <li>
+                Multi-tenant factory schemas for products, work orders, and raw
+                material inventory.
+              </li>
+              <li>
+                Email OTP verification, password reset, bearer auth, and profile
+                settings via <code>@repo/auth</code>.
+              </li>
+              <li>
+                Shared database client across Next.js and NestJS via{' '}
+                <code>@repo/db</code>.
+              </li>
+            </ul>
+          </Tile>
+        </Column>
+      </Grid>
+    </AppShell>
   );
 }

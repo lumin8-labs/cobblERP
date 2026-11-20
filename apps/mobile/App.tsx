@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -8,14 +8,17 @@ import {
   SafeAreaView,
   ActivityIndicator,
   StatusBar,
+  Platform,
 } from 'react-native';
 import {
   CarbonSpacing,
   CarbonTypography,
   CarbonThemeProvider,
   useCarbonTheme,
-  CarbonThemeColors,
 } from './src/theme/carbon';
+import { MobileAuthService, type MobileSessionData } from './src/services/auth';
+import { AuthScreen } from './src/screens/AuthScreen';
+import { SettingsScreen } from './src/screens/SettingsScreen';
 
 interface WorkOrder {
   id: string;
@@ -61,8 +64,15 @@ const INITIAL_WORK_ORDERS: WorkOrder[] = [
   },
 ];
 
+const API_HEALTH_URL =
+  Platform.OS === 'android'
+    ? 'http://10.0.2.2:4000/health'
+    : 'http://localhost:4000/health';
+
 function CobblERPScreen() {
-  const { mode, colors, toggleTheme } = useCarbonTheme();
+  const { mode, colors, toggleTheme, setTheme } = useCarbonTheme();
+  const [activeView, setActiveView] = useState<'floor' | 'account'>('floor');
+  const [session, setSession] = useState<MobileSessionData | null>(null);
   const [workOrders] = useState<WorkOrder[]>(INITIAL_WORK_ORDERS);
   const [selectedStage, setSelectedStage] = useState<string>('All');
   const [updateStatus, setUpdateStatus] = useState<string>('System up to date');
@@ -76,6 +86,14 @@ function CobblERPScreen() {
     selectedStage === 'All'
       ? workOrders
       : workOrders.filter((wo) => wo.stage === selectedStage);
+
+  const refreshSession = useCallback(async () => {
+    const data = await MobileAuthService.getSession();
+    setSession(data);
+    if (data?.user?.preferredTheme === 'white' || data?.user?.preferredTheme === 'g100') {
+      setTheme(data.user.preferredTheme);
+    }
+  }, [setTheme]);
 
   const handleCheckUpdate = async () => {
     setCheckingUpdate(true);
@@ -107,7 +125,7 @@ function CobblERPScreen() {
   const handlePingApi = async () => {
     setLoadingApi(true);
     try {
-      const res = await fetch('http://localhost:4000/health');
+      const res = await fetch(API_HEALTH_URL);
       const data = await res.json();
       setApiStatus(`API Online (Uptime: ${Math.round(data.uptime)}s)`);
     } catch (err: any) {
@@ -141,7 +159,7 @@ function CobblERPScreen() {
     }
   };
 
-  const dynamicStyles = getDynamicStyles(colors);
+  const dynamicStyles = getDynamicStyles();
 
   return (
     <SafeAreaView style={[dynamicStyles.safeArea, { backgroundColor: colors.background }]}>
@@ -160,20 +178,21 @@ function CobblERPScreen() {
               <Text style={[dynamicStyles.headerSubBrand, { color: colors.interactive01 }]}>Shop Floor</Text>
             </View>
             <Text style={[dynamicStyles.headerSubtitle, { color: colors.textSecondary }]}>
-              Footwear Manufacturing • Theme: {mode === 'g100' ? 'Gray 100 (Dark)' : 'White (Light)'}
+              {session?.user
+                ? `${session.user.name} • ${mode === 'g100' ? 'Gray 100' : 'White'}`
+                : `Footwear MES • ${mode === 'g100' ? 'Gray 100' : 'White'}`}
             </Text>
           </View>
         </View>
 
         <View style={dynamicStyles.headerActions}>
-          {/* Carbon Theme Toggle Button */}
           <TouchableOpacity
             style={[dynamicStyles.themeToggleBtn, { backgroundColor: colors.layer01, borderColor: colors.borderSubtle }]}
             onPress={toggleTheme}
             activeOpacity={0.7}
           >
             <Text style={[dynamicStyles.themeToggleText, { color: colors.textPrimary }]}>
-              {mode === 'g100' ? '☀️ Light' : '🌙 Dark'}
+              {mode === 'g100' ? 'Light' : 'Dark'}
             </Text>
           </TouchableOpacity>
 
@@ -192,124 +211,175 @@ function CobblERPScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={dynamicStyles.container}>
-        {/* Footwear Production Summary Card (Carbon Tile) */}
-        <View style={[dynamicStyles.carbonTile, { backgroundColor: colors.layer01, borderColor: colors.borderSubtle }]}>
-          <Text style={[dynamicStyles.tileHeader, { color: colors.textPrimary }]}>Active Footwear Work Orders</Text>
-          <Text style={[dynamicStyles.tileSubheader, { color: colors.textSecondary }]}>
-            Total In-Production: 770 Pairs across 3 Production Lines
+      {/* Carbon Navigation Tabs (Shop Floor vs Auth/Profile Settings) */}
+      <View style={[dynamicStyles.navBar, { backgroundColor: colors.layer01, borderBottomColor: colors.borderSubtle }]}>
+        <TouchableOpacity
+          style={[
+            dynamicStyles.navTab,
+            activeView === 'floor' && { borderBottomColor: colors.interactive01, borderBottomWidth: 2 },
+          ]}
+          onPress={() => setActiveView('floor')}
+        >
+          <Text
+            style={[
+              dynamicStyles.navTabText,
+              { color: activeView === 'floor' ? colors.textPrimary : colors.textSecondary },
+            ]}
+          >
+            Production Floor
           </Text>
+        </TouchableOpacity>
 
-          {/* Production Stage Filter Bar */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={dynamicStyles.filterScroll}>
-            <View style={dynamicStyles.filterRow}>
-              {stages.map((stage) => {
-                const isActive = selectedStage === stage;
+        <TouchableOpacity
+          style={[
+            dynamicStyles.navTab,
+            activeView === 'account' && { borderBottomColor: colors.interactive01, borderBottomWidth: 2 },
+          ]}
+          onPress={() => setActiveView('account')}
+        >
+          <Text
+            style={[
+              dynamicStyles.navTabText,
+              { color: activeView === 'account' ? colors.textPrimary : colors.textSecondary },
+            ]}
+          >
+            {session?.user ? 'Profile & Settings' : 'Operator Sign In'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView contentContainerStyle={dynamicStyles.container}>
+        {activeView === 'account' ? (
+          session?.user ? (
+            <SettingsScreen
+              session={session}
+              onRefreshSession={refreshSession}
+              onSignedOut={() => setSession(null)}
+            />
+          ) : (
+            <AuthScreen onAuthenticated={refreshSession} />
+          )
+        ) : (
+          <>
+            {/* Footwear Production Summary Card (Carbon Tile) */}
+            <View style={[dynamicStyles.carbonTile, { backgroundColor: colors.layer01, borderColor: colors.borderSubtle }]}>
+              <Text style={[dynamicStyles.tileHeader, { color: colors.textPrimary }]}>Active Footwear Work Orders</Text>
+              <Text style={[dynamicStyles.tileSubheader, { color: colors.textSecondary }]}>
+                Total In-Production: 770 Pairs across 3 Production Lines
+              </Text>
+
+              {/* Production Stage Filter Bar */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={dynamicStyles.filterScroll}>
+                <View style={dynamicStyles.filterRow}>
+                  {stages.map((stage) => {
+                    const isActive = selectedStage === stage;
+                    return (
+                      <TouchableOpacity
+                        key={stage}
+                        style={[
+                          dynamicStyles.filterChip,
+                          {
+                            backgroundColor: isActive ? colors.interactive01 : colors.layer02,
+                            borderColor: isActive ? colors.interactive01 : colors.borderSubtle,
+                          },
+                        ]}
+                        onPress={() => setSelectedStage(stage)}
+                      >
+                        <Text
+                          style={[
+                            dynamicStyles.filterChipText,
+                            { color: isActive ? colors.textOnColor : colors.textSecondary },
+                          ]}
+                        >
+                          {stage}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </ScrollView>
+            </View>
+
+            {/* Work Orders List */}
+            <View style={dynamicStyles.section}>
+              <Text style={[dynamicStyles.sectionTitle, { color: colors.textSecondary }]}>
+                Orders in Stage: <Text style={{ color: colors.interactive01, fontWeight: '600' }}>{selectedStage}</Text>
+              </Text>
+
+              {filteredOrders.map((wo) => {
+                const badge = getStatusBadgeStyle(wo.status);
                 return (
-                  <TouchableOpacity
-                    key={stage}
-                    style={[
-                      dynamicStyles.filterChip,
-                      {
-                        backgroundColor: isActive ? colors.interactive01 : colors.layer02,
-                        borderColor: isActive ? colors.interactive01 : colors.borderSubtle,
-                      },
-                    ]}
-                    onPress={() => setSelectedStage(stage)}
+                  <View
+                    key={wo.id}
+                    style={[dynamicStyles.orderCard, { backgroundColor: colors.layer01, borderColor: colors.borderSubtle }]}
                   >
-                    <Text
-                      style={[
-                        dynamicStyles.filterChipText,
-                        { color: isActive ? colors.textOnColor : colors.textSecondary },
-                      ]}
-                    >
-                      {stage}
-                    </Text>
-                  </TouchableOpacity>
+                    <View style={dynamicStyles.orderHeader}>
+                      <View>
+                        <Text style={[dynamicStyles.orderNumber, { color: colors.interactive01 }]}>{wo.orderNumber}</Text>
+                        <Text style={[dynamicStyles.styleName, { color: colors.textPrimary }]}>{wo.styleName}</Text>
+                      </View>
+                      <View
+                        style={[
+                          dynamicStyles.statusBadge,
+                          { backgroundColor: badge.bg, borderColor: badge.border },
+                        ]}
+                      >
+                        <Text style={[dynamicStyles.statusBadgeText, { color: badge.color }]}>
+                          {wo.status}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={[dynamicStyles.orderDivider, { backgroundColor: colors.borderSubtle }]} />
+
+                    <View style={dynamicStyles.orderMetaGrid}>
+                      <View style={dynamicStyles.metaItem}>
+                        <Text style={[dynamicStyles.metaLabel, { color: colors.textPlaceholder }]}>Construction</Text>
+                        <Text style={[dynamicStyles.metaValue, { color: colors.textPrimary }]}>{wo.shoeType}</Text>
+                      </View>
+                      <View style={dynamicStyles.metaItem}>
+                        <Text style={[dynamicStyles.metaLabel, { color: colors.textPlaceholder }]}>Batch Pairs</Text>
+                        <Text style={[dynamicStyles.metaValueHighlight, { color: colors.supportSuccess }]}>{wo.pairs} pairs</Text>
+                      </View>
+                      <View style={dynamicStyles.metaItem}>
+                        <Text style={[dynamicStyles.metaLabel, { color: colors.textPlaceholder }]}>Current Stage</Text>
+                        <Text style={[dynamicStyles.metaValue, { color: colors.textPrimary }]}>{wo.stage}</Text>
+                      </View>
+                      <View style={dynamicStyles.metaItem}>
+                        <Text style={[dynamicStyles.metaLabel, { color: colors.textPlaceholder }]}>Leather Lot</Text>
+                        <Text style={[dynamicStyles.metaValueMono, { color: colors.textSecondary }]}>{wo.leatherLot}</Text>
+                      </View>
+                    </View>
+                  </View>
                 );
               })}
             </View>
-          </ScrollView>
-        </View>
 
-        {/* Work Orders List */}
-        <View style={dynamicStyles.section}>
-          <Text style={[dynamicStyles.sectionTitle, { color: colors.textSecondary }]}>
-            Orders in Stage: <Text style={{ color: colors.interactive01, fontWeight: '600' }}>{selectedStage}</Text>
-          </Text>
+            {/* OTA Update Management Card (Expo Updates Tooling) */}
+            <View style={[dynamicStyles.carbonTile, { backgroundColor: colors.layer01, borderColor: colors.borderSubtle }]}>
+              <Text style={[dynamicStyles.tileHeader, { color: colors.textPrimary }]}>Over-the-Air Update System</Text>
+              <Text style={[dynamicStyles.tileSubheader, { color: colors.textSecondary }]}>
+                Bare React Native architecture powered by expo-updates for seamless shop-floor updates.
+              </Text>
 
-          {filteredOrders.map((wo) => {
-            const badge = getStatusBadgeStyle(wo.status);
-            return (
-              <View
-                key={wo.id}
-                style={[dynamicStyles.orderCard, { backgroundColor: colors.layer01, borderColor: colors.borderSubtle }]}
+              <TouchableOpacity
+                style={[dynamicStyles.carbonPrimaryButton, { backgroundColor: colors.interactive01 }]}
+                onPress={handleCheckUpdate}
+                disabled={checkingUpdate}
               >
-                <View style={dynamicStyles.orderHeader}>
-                  <View>
-                    <Text style={[dynamicStyles.orderNumber, { color: colors.interactive01 }]}>{wo.orderNumber}</Text>
-                    <Text style={[dynamicStyles.styleName, { color: colors.textPrimary }]}>{wo.styleName}</Text>
-                  </View>
-                  <View
-                    style={[
-                      dynamicStyles.statusBadge,
-                      { backgroundColor: badge.bg, borderColor: badge.border },
-                    ]}
-                  >
-                    <Text style={[dynamicStyles.statusBadgeText, { color: badge.color }]}>
-                      {wo.status}
-                    </Text>
-                  </View>
-                </View>
+                {checkingUpdate ? (
+                  <ActivityIndicator color={colors.textOnColor} />
+                ) : (
+                  <Text style={[dynamicStyles.carbonButtonText, { color: colors.textOnColor }]}>Check for Updates</Text>
+                )}
+              </TouchableOpacity>
 
-                <View style={[dynamicStyles.orderDivider, { backgroundColor: colors.borderSubtle }]} />
-
-                <View style={dynamicStyles.orderMetaGrid}>
-                  <View style={dynamicStyles.metaItem}>
-                    <Text style={[dynamicStyles.metaLabel, { color: colors.textPlaceholder }]}>Construction</Text>
-                    <Text style={[dynamicStyles.metaValue, { color: colors.textPrimary }]}>{wo.shoeType}</Text>
-                  </View>
-                  <View style={dynamicStyles.metaItem}>
-                    <Text style={[dynamicStyles.metaLabel, { color: colors.textPlaceholder }]}>Batch Pairs</Text>
-                    <Text style={[dynamicStyles.metaValueHighlight, { color: colors.supportSuccess }]}>{wo.pairs} pairs</Text>
-                  </View>
-                  <View style={dynamicStyles.metaItem}>
-                    <Text style={[dynamicStyles.metaLabel, { color: colors.textPlaceholder }]}>Current Stage</Text>
-                    <Text style={[dynamicStyles.metaValue, { color: colors.textPrimary }]}>{wo.stage}</Text>
-                  </View>
-                  <View style={dynamicStyles.metaItem}>
-                    <Text style={[dynamicStyles.metaLabel, { color: colors.textPlaceholder }]}>Leather Lot</Text>
-                    <Text style={[dynamicStyles.metaValueMono, { color: colors.textSecondary }]}>{wo.leatherLot}</Text>
-                  </View>
-                </View>
+              <View style={[dynamicStyles.updateStatusBar, { backgroundColor: colors.layer02, borderLeftColor: colors.interactive01 }]}>
+                <Text style={[dynamicStyles.updateStatusText, { color: colors.textSecondary }]}>{updateStatus}</Text>
               </View>
-            );
-          })}
-        </View>
-
-        {/* OTA Update Management Card (Expo Updates Tooling) */}
-        <View style={[dynamicStyles.carbonTile, { backgroundColor: colors.layer01, borderColor: colors.borderSubtle }]}>
-          <Text style={[dynamicStyles.tileHeader, { color: colors.textPrimary }]}>Over-the-Air Update System</Text>
-          <Text style={[dynamicStyles.tileSubheader, { color: colors.textSecondary }]}>
-            Bare React Native architecture powered by expo-updates for seamless shop-floor updates.
-          </Text>
-
-          <TouchableOpacity
-            style={[dynamicStyles.carbonPrimaryButton, { backgroundColor: colors.interactive01 }]}
-            onPress={handleCheckUpdate}
-            disabled={checkingUpdate}
-          >
-            {checkingUpdate ? (
-              <ActivityIndicator color={colors.textOnColor} />
-            ) : (
-              <Text style={[dynamicStyles.carbonButtonText, { color: colors.textOnColor }]}>Check for Updates</Text>
-            )}
-          </TouchableOpacity>
-
-          <View style={[dynamicStyles.updateStatusBar, { backgroundColor: colors.layer02, borderLeftColor: colors.interactive01 }]}>
-            <Text style={[dynamicStyles.updateStatusText, { color: colors.textSecondary }]}>{updateStatus}</Text>
-          </View>
-        </View>
+            </View>
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -323,7 +393,7 @@ export default function App() {
   );
 }
 
-function getDynamicStyles(colors: CarbonThemeColors) {
+function getDynamicStyles() {
   return StyleSheet.create({
     safeArea: {
       flex: 1,
@@ -390,6 +460,19 @@ function getDynamicStyles(colors: CarbonThemeColors) {
     apiBadgeText: {
       fontSize: CarbonTypography.caption.fontSize,
       fontFamily: 'Courier',
+    },
+    navBar: {
+      flexDirection: 'row',
+      borderBottomWidth: 1,
+      paddingHorizontal: CarbonSpacing.lg,
+      gap: CarbonSpacing.lg,
+    },
+    navTab: {
+      paddingVertical: CarbonSpacing.md,
+    },
+    navTabText: {
+      fontSize: CarbonTypography.body01.fontSize,
+      fontWeight: '600',
     },
     carbonTile: {
       borderWidth: 1,
