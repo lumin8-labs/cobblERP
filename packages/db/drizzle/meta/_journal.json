@@ -15,6 +15,13 @@
       "when": 1792395969461,
       "tag": "0001_shallow_tempest",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794293885847,
+      "tag": "0002_auth_multitenancy",
+      "breakpoints": true
     }
   ]
 }
